@@ -1,0 +1,34 @@
+Ideas
+-Some Images have no Earth - others have Earth in background.
+-Attention Model - Focus on image characteristics that help prediction
+-Object detection off the shelf algo
+-Create metric to directly minimize errors
+-Resnet34 Base Model for Speed
+-Check for duplicaates
+-Ensure distributions between earth & no-earth are consistant
+-Augment data by camera rotation transforms, need to adjust quaternion ground truths on the fly.
+-Augment by illumination adjustments.
+-Threshold pixel information or texture to classify eart vs no earth images?
+-TSNEfield data
+-There is some bias associated with the poses, more are from the y direction, followed by the z direction, followed lastly by the x direction. Will need to try and remove such bias from the training set. random selection nearest neighbor ID on Sphere? 
+
+-tanh function as +1,-1 range
+-need to figure output function associated with position vector training.
+
+
+Network 1:
+Given input image
+Determine bounding box around satilite and feed into CNN to train quaternion for pose estimation
+
+Network 2:
+Determine bounding box around satilite, keypoint features, feed into neural network to predict position vector
+
+Network 3:
+Deep NN to learn pose and position vector
+
+Network 4
+Encoder decoder for low res to high res model determination
+
+Augmentation
+-will need to increase sampling of distant objects during training, hard example training
+-camera locations lattitude longditude azimuth fro quaternion and camera matrix.

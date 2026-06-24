@@ -1,0 +1,243 @@
+from keras.callbacks import Callback
+from keras import backend as K
+import numpy as np
+import warnings
+
+class CyclicLR(Callback):
+    """This callback implements a cyclical learning rate policy (CLR).
+    The method cycles the learning rate between two boundaries with
+    some constant frequency.
+    # Arguments
+        base_lr: initial learning rate which is the
+            lower boundary in the cycle.
+        max_lr: upper boundary in the cycle. Functionally,
+            it defines the cycle amplitude (max_lr - base_lr).
+            The lr at any cycle is the sum of base_lr
+            and some scaling of the amplitude; therefore
+            max_lr may not actually be reached depending on
+            scaling function.
+        step_size: number of training iterations per
+            half cycle. Authors suggest setting step_size
+            2-8 x training iterations in epoch.
+        mode: one of {triangular, triangular2, exp_range}.
+            Default 'triangular'.
+            Values correspond to policies detailed above.
+            If scale_fn is not None, this argument is ignored.
+        gamma: constant in 'exp_range' scaling function:
+            gamma**(cycle iterations)
+        scale_fn: Custom scaling policy defined by a single
+            argument lambda function, where
+            0 <= scale_fn(x) <= 1 for all x >= 0.
+            mode paramater is ignored
+        scale_mode: {'cycle', 'iterations'}.
+            Defines whether scale_fn is evaluated on
+            cycle number or cycle iterations (training
+            iterations since start of cycle). Default is 'cycle'.
+
+    The amplitude of the cycle can be scaled on a per-iteration or
+    per-cycle basis.
+    This class has three built-in policies, as put forth in the paper.
+    "triangular":
+        A basic triangular cycle w/ no amplitude scaling.
+    "triangular2":
+        A basic triangular cycle that scales initial amplitude by half each cycle.
+    "exp_range":
+        A cycle that scales initial amplitude by gamma**(cycle iterations) at each
+        cycle iteration.
+    For more detail, please see paper.
+
+    # Example for CIFAR-10 w/ batch size 100:
+        ```python
+            clr = CyclicLR(base_lr=0.001, max_lr=0.006,
+                                step_size=2000., mode='triangular')
+            model.fit(X_train, Y_train, callbacks=[clr])
+        ```
+
+    Class also supports custom scaling functions:
+        ```python
+            clr_fn = lambda x: 0.5*(1+np.sin(x*np.pi/2.))
+            clr = CyclicLR(base_lr=0.001, max_lr=0.006,
+                                step_size=2000., scale_fn=clr_fn,
+                                scale_mode='cycle')
+            model.fit(X_train, Y_train, callbacks=[clr])
+        ```
+
+    # References
+
+      - [Cyclical Learning Rates for Training Neural Networks](
+      https://arxiv.org/abs/1506.01186)
+    """
+
+    def __init__(
+            self,
+            base_lr=0.001,
+            max_lr=0.006,
+            step_size=2000.,
+            mode='triangular',
+            gamma=1.,
+            scale_fn=None,
+            scale_mode='cycle',
+            monitor='val_loss',### 
+            factor=0.1, 
+            patience=10,
+            verbose=0, 
+            reduction_mode='auto', 
+            min_delta=1e-4, 
+            cooldown=0, 
+            min_lr=0,
+                 **kwargs):
+        super(CyclicLR, self).__init__()
+
+        if mode not in ['triangular', 'triangular2',
+                        'exp_range']:
+            raise KeyError("mode must be one of 'triangular', "
+                           "'triangular2', or 'exp_range'")
+        self.base_lr = base_lr
+        self.max_lr = max_lr
+        self.step_size = step_size
+        self.mode = mode
+        self.gamma = gamma
+        if scale_fn is None:
+            if self.mode == 'triangular':
+                self.scale_fn = lambda x: 1.
+                self.scale_mode = 'cycle'
+            elif self.mode == 'triangular2':
+                self.scale_fn = lambda x: 1 / (2.**(x - 1))
+                self.scale_mode = 'cycle'
+            elif self.mode == 'exp_range':
+                self.scale_fn = lambda x: gamma ** x
+                self.scale_mode = 'iterations'
+        else:
+            self.scale_fn = scale_fn
+            self.scale_mode = scale_mode
+        self.clr_iterations = 0.
+        self.trn_iterations = 0.
+        self.history = {}
+
+        self._reset()
+        
+        self.monitor = monitor
+        if factor >= 1.0:
+            raise ValueError('ReduceLROnPlateau '
+                             'does not support a factor >= 1.0.')
+        if 'epsilon' in kwargs:
+            min_delta = kwargs.pop('epsilon')
+            warnings.warn('`epsilon` argument is deprecated and '
+                          'will be removed, use `min_delta` instead.')        
+        self.factor = factor
+        self.min_lr = min_lr
+        self.min_delta = min_delta
+        self.patience = patience
+        self.verbose = verbose
+        self.cooldown = cooldown
+        self.cooldown_counter = 0  # Cooldown counter.
+        self.wait = 0
+        self.best = 0
+        self.reduction_mode = reduction_mode
+        self.monitor_op = None        
+        self._reset_sched()
+
+    def _reset(self, new_base_lr=None, new_max_lr=None,
+               new_step_size=None):
+        """Resets cycle iterations.
+        Optional boundary/step size adjustment.
+        """
+        if new_base_lr is not None:
+            self.base_lr = new_base_lr
+        if new_max_lr is not None:
+            self.max_lr = new_max_lr
+        if new_step_size is not None:
+            self.step_size = new_step_size
+        self.clr_iterations = 0.
+
+    def clr(self):
+        cycle = np.floor(1 + self.clr_iterations / (2 * self.step_size))
+        x = np.abs(self.clr_iterations / self.step_size - 2 * cycle + 1)
+        if self.scale_mode == 'cycle':
+            return self.base_lr + (self.max_lr - self.base_lr) * \
+                np.maximum(0, (1 - x)) * self.scale_fn(cycle)
+        else:
+            return self.base_lr + (self.max_lr - self.base_lr) * \
+                np.maximum(0, (1 - x)) * self.scale_fn(self.clr_iterations)
+                
+    def _reset_sched(self):
+        """Resets wait counter and cooldown counter.
+        """
+        if self.reduction_mode not in ['auto', 'min', 'max']:
+            warnings.warn('Learning Rate Plateau Reducing mode %s is unknown, '
+                          'fallback to auto mode.' % (self.reduction_mode),
+                          RuntimeWarning)
+            self.reduction_mode = 'auto'
+        if (self.reduction_mode == 'min' or
+           (self.reduction_mode == 'auto' and 'acc' not in self.monitor)):
+            self.monitor_op = lambda a, b: np.less(a, b - self.min_delta)
+            self.best = np.Inf
+        else:
+            self.monitor_op = lambda a, b: np.greater(a, b + self.min_delta)
+            self.best = -np.Inf
+        self.cooldown_counter = 0
+        self.wait = 0                
+
+    def on_train_begin(self, logs={}):
+        logs = logs or {}
+
+        if self.clr_iterations == 0:
+            K.set_value(self.model.optimizer.learning_rate, self.base_lr)
+        else:
+            K.set_value(self.model.optimizer.learning_rate, self.clr())
+            
+        self._reset_sched()
+
+    def on_batch_end(self, epoch, logs=None):
+
+        logs = logs or {}
+        self.trn_iterations += 1
+        self.clr_iterations += 1
+        K.set_value(self.model.optimizer.learning_rate, self.clr())
+
+        self.history.setdefault(
+            'lr', []).append(
+            K.get_value(
+                self.model.optimizer.learning_rate))
+        self.history.setdefault('iterations', []).append(self.trn_iterations)
+
+        for k, v in logs.items():
+            self.history.setdefault(k, []).append(v)
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        logs['lr'] = K.get_value(self.model.optimizer.learning_rate)
+        
+        current = logs.get(self.monitor)
+        if current is None:
+            warnings.warn(
+                'Reduce LR on plateau conditioned on metric `%s` '
+                'which is not available. Available metrics are: %s' %
+                (self.monitor, ','.join(list(logs.keys()))), RuntimeWarning
+            )
+
+        else:
+            if self.in_cooldown():
+                self.cooldown_counter -= 1
+                self.wait = 0
+
+            if self.monitor_op(current, self.best):
+                self.best = current
+                self.wait = 0
+            elif not self.in_cooldown():
+                self.wait += 1
+                if self.wait >= self.patience:
+                    old_lr = float(K.get_value(self.model.optimizer.learning_rate))
+                    if old_lr > self.min_lr:
+                        new_lr = old_lr * self.factor
+                        new_lr = max(new_lr, self.min_lr)
+                        K.set_value(self.model.optimizer.learning_rate, new_lr)#entry point for new cycle
+                        self._reset(new_lr,old_lr,self.step_size)
+                        if self.verbose > 0:
+                            print('\nEpoch %05d: ReduceLROnPlateau reducing '
+                                  'base learning rate to %s.' % (epoch + 1, new_lr))
+                        self.cooldown_counter = self.cooldown
+                        self.wait = 0
+
+    def in_cooldown(self):
+        return self.cooldown_counter > 0        

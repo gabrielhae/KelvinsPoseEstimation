@@ -1,0 +1,85 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Model weights & checkpoints
+*.h5
+*.hdf5
+*.pth
+*.pt
+*.ckpt
+
+# Random generator states (numpy)
+*.obj
+*.npy
+
+# Pickle files
+*.pickle
+*.pkl
+
+# Datasets (large, external)
+data/speed/
+preprocessed_images*/
+preprocessed_images_*/
+
+# Results output (track .md, ignore bulk outputs)
+results/submissions/
+results/models/
+results/visualizations/
+results/logs/
+results/logs_batch/
+results/best_model/
+*.csv
+*.html
+*.png
+*.jpg
+*.jpeg
+
+# Track specific results files
+!results/EXPERIMENT_RESULTS.md
+!results/Main Results.txt
+!results/results tracker.txt
+!results/Scores.txt
+
+# Archives
+*.zip
+*.rar
+*.tar
+*.gz
+
+# Third-party large binaries / datasets
+third_party/Keras-FasterRCNN-master/VOCdevkit/
+third_party/VisualSFM_windows_cuda_64bit/*.exe
+third_party/VisualSFM_windows_cuda_64bit/*.dll
+third_party/VisualSFM_windows_cuda_64bit/log/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.spyproject/
+.spyder-py3/
+
+# TensorFlow logs
+events.out.tfevents.*
+logs/
+logsbatch/
+*.tfevents.*
+plugins/profile/
+logs_*/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Temp
+tmp.h5
+*.bak

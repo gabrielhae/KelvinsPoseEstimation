@@ -1,0 +1,67 @@
+# This file created by conda-build 3.18.9
+# meta.yaml template originally from:
+# /home/conda/recipe_root, last modified Sun Aug 25 19:48:27 2019
+# ------------------------------------------------
+
+package:
+    name: keras-applications
+    version: 1.0.8
+source:
+    sha256: 7c37f9e9ef93efac9b4956301cb21ce46c474ce9da41fac9a46753bab6823dfc
+    url: https://github.com/keras-team/Keras-Applications/archive/1.0.8.tar.gz
+build:
+    noarch: python
+    number: '1'
+    script: python -m pip install --no-deps --ignore-installed .
+    string: py_1
+requirements:
+    host:
+        - _libgcc_mutex 0.1 main
+        - ca-certificates 2019.6.16 hecc5488_0
+        - certifi 2019.6.16 py27_1
+        - libffi 3.2.1 he1b5a44_1006
+        - libgcc-ng 9.1.0 hdf63c60_0
+        - libstdcxx-ng 9.1.0 hdf63c60_0
+        - ncurses 6.1 hf484d3e_1002
+        - openssl 1.1.1c h516909a_0
+        - pip 19.2.3 py27_0
+        - python 2.7.15 h5a48372_1009
+        - readline 8.0 hf8c457e_0
+        - setuptools 41.2.0 py27_0
+        - sqlite 3.29.0 hcee41ef_0
+        - tk 8.6.9 hed695b0_1002
+        - wheel 0.33.6 py27_0
+        - zlib 1.2.11 h516909a_1005
+    run:
+        - h5py
+        - numpy >=1.9.1
+        - python
+    run_constrained:
+        - keras >=2.1.6
+test:
+    imports:
+        - keras_applications
+about:
+    description: 'Keras Applications is the applications module of the Keras deep
+        learning
+
+        library. It provides model definitions and pre-trained weights for a
+
+        number of popular archictures, such as VGG16, ResNet50, Xception,
+
+        MobileNet, and more.
+
+        '
+    dev_url: https://github.com/keras-team/keras-applications
+    doc_url: https://keras.io/applications/
+    home: https://github.com/keras-team/keras-applications
+    license: MIT
+    license_family: MIT
+    license_file: LICENSE
+    summary: Applications module of the Keras deep learning library.
+extra:
+    copy_test_source_files: true
+    final: true
+    recipe-maintainers:
+        - CurtLH
+        - jjhelmus

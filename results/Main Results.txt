@@ -1,0 +1,4 @@
+300 - l2 weights regularization - could probably train longer
+
+Epoch 100/100
+525/525 [==============================] - 153s 292ms/step - loss: 1.2929 - q_loss: 0.1922 - r_loss: 0.1936 - q_mean_squared_error: 0.3392 - r_mean_squared_error: 0.1936 - val_loss: 1.3419 - val_q_loss: 0.1810 - val_r_loss: 0.2580 - val_q_mean_squared_error: 0.3452 - val_r_mean_squared_error: 0.2580
